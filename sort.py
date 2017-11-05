@@ -1,4 +1,5 @@
 class Sorting(list):
+
 	def Bubble(self, reverse = False):
 		'''Complexity O(n2)'''
 		
@@ -16,15 +17,32 @@ class Sorting(list):
 				self[i],self[min] = self[min],self[i]
 
 	def Shell(self, reverse = False):
-		from math import log
-		kk,i = [1],1
-		while 3*kk[-1] < len(self):			# for i in range(2 * int(log(1 + (1 + 4/9*(N/3-1))**0.5, 2))):
-			if i & 1 == 0:	kk.append(9*2**i - 9*2**(i//2) + 1)
-			else:			kk.append(8*2**i - 6*2**((i+1)//2) + 1)
-			i += 1
-		for k in kk:																	# Sedgwick, O(n**4/3)
-	#	for k in [len(self) >> x for x in range(1, int(log(len(self), 2) + 1))]:		# Shell, O(n**2): k = [N/2, N/4, N/8, ... , 1]
-	#	for k in [x for x in [1750,701,301,132,57,23,10,4,1] if x < len(self)//2 + 1]:	# Ciura for len<4000: k = [1, 4, 10, 23, 57, 132, 301, 701, 1750]
+		
+		def iterator_shell(n):
+			'''	Complexity O(n**2);
+				k = [N/2, N/4, N/8, ... , 1]'''
+			from math import log
+			for x in range(1, int(log(n, 2) + 1)):
+				yield n >> x
+	
+		def iterator_ciura(n):
+			''' Proper for len<4000: '''
+			for x in [1750,701,301,132,57,23,10,4,1]:
+				if x < n//2 + 1:
+					yield x
+				
+		def iterator_sedgwick(n):
+			''' Complexity O(n**4/3) '''			
+			kk,i = [1],1
+			while 3*kk[-1] < n:			# for i in range(2 * int(log(1 + (1 + 4/9*(N/3-1))**0.5, 2))):
+				if i & 1 == 0:	kk.append(9*2**i - 9*2**(i//2) + 1)
+				else:			kk.append(8*2**i - 6*2**((i+1)//2) + 1)
+				i += 1
+			return kk
+				
+	#	for k in iterator_shell(len(self)):
+		for k in iterator_ciura(len(self)):
+	#	for k in iterator_sedgwick(len(self)):
 			for i in range(k, len(self)):
 				temp = self[i]
 				for j in range(i, k-2, -k):
@@ -33,6 +51,29 @@ class Sorting(list):
 					self[j] = self[j-k]
 				self[j] = temp
 
+	def Heapsort(self, reverse = False):
+		'''Complexity O(nlogn)'''
+		size = len(self)
+		
+		# Build a balanced (depth is k or k-1) B-tree, where root a[0] = max(a), a[i]>=a[2i+1] and a[i]>=a[2i+2].
+		def heapify(k, n):
+			new_lmnt = self[k]							
+			while 2*k+1 < n:							# While there are sons, do:
+				child = 2*k+1							# (a[2k+1] is a left son, a[2k+2] is a right son)
+				if child+1 < n and (self[child] >= self[child+1]) == reverse:
+					child += 1							# Choose largest of two sons.
+				if (new_lmnt < self[child]) == reverse:
+					break
+				self[k] = self[child]					# If a[k] < the largest son,
+				k = child								# take this son up to the root on the k-place.
+			self[k] = new_lmnt
+			
+		for i in range(size//2-1, -1, -1):				# a[n/2]...a[n] are already leaves of a pyramid.
+			heapify(i, size-1)							# Build a binary heap.
+		for i in range(size-1, 0, -1):
+			self[0],self[i] = self[i],self[0]			# Swap the first (max) and the last elements, putting max at the end,
+			heapify(0,i)								# and remake a pyramid except the last element (put a new max at the root)
+				
 	def Merge(self, reverse = False):
 		'''Complexity O(nlogn), extra memory O(n)'''
 		
@@ -102,8 +143,71 @@ class Sorting(list):
 			_tree.add(item)
 		_tree.sorting(self, reverse)
 
+	def Quick(self, reverse = False):
 	
+		def lt(a,b,reverse): return a < b if not reverse else a > b
+		def gt(a,b,reverse): return a > b if not reverse else a < b
+		
+		def _quick(left, right):
+			if right - left <= 1:
+				if gt(self[left], self[right], reverse):
+					self[left],self[right] = self[right],self[left]
+				return
+		
+			i, j, middle = left, right, left + (right - left) // 2
+			pivot = self[middle]							# Different variables are possible. E.g., a median of a[left], a[middle] and a[right]
+			
+			while i <= j:
+				while lt(self[i], pivot, reverse):			# Pass all a[i] < pivot
+					i += 1
+				while gt(self[j], pivot, reverse):			# Pass all a[j] > pivot
+					j -= 1
+				if i <= j:									# If a[i] >= pivot >= a[j], swap a[i] and a[j]
+					self[i],self[j] = self[j],self[i]
+					i += 1
+					j -= 1
+		
+			if j >= left:									# Sort elements to the left of the pivot
+				_quick(left, j)
+			if i <= right:									# Sort elements to the right of the pivot
+				_quick(i, right)
+				
+		_quick(0, len(self)-1)
 	
+	def QuickI(self, reverse = False):
+	
+		def lt(a,b,reverse): return a < b if not reverse else a > b
+		def gt(a,b,reverse): return a > b if not reverse else a < b
+	
+		indices = [0, len(self)-1]							# A stack, where indices[2i] == lefts, indices[2i+1] == rights.
+		
+		while len(indices) > 0:
+			left,right = indices[-2],indices[-1]
+			del indices[-2:]								# Pop current indices from the stack.
+			
+			if right - left <= 1:
+				if gt(self[left], self[right], reverse):
+					self[left],self[right] = self[right],self[left]
+				continue
+			
+			i, j, middle = left, right, left + (right - left) // 2
+			pivot = self[middle]							# Different variables are possible. E.g., a median of a[left], a[middle] and a[right]
+		
+			while i <= j:
+				while lt(self[i], pivot, reverse):			# Pass all a[i] < pivot
+					i += 1
+				while gt(self[j], pivot, reverse):			# Pass all a[j] > pivot
+					j -= 1
+				if i <= j:									# If a[i] >= pivot >= a[j], swap a[i] and a[j]
+					self[i],self[j] = self[j],self[i]
+					i += 1
+					j -= 1
+		
+			if j >= left:									# Sort elements to the left of the pivot
+				indices += left,j
+			if i <= right:									# Sort elements to the right of the pivot
+				indices += i, right
+
 	
 def main():
 	import time
@@ -117,7 +221,14 @@ def main():
 	n = len(a)
 
 	direction = True
+
+	# def qsort(L):
+		# if L:
+			# return qsort([x for x in L[1:] if x<L[0]]) + L[0:1] + qsort([x for x in L[1:] if x>=L[0]])
+		# return []
 	
+	# print(qsort(a))
+		
 	random.shuffle(a)
 	t1 = time.perf_counter()
 	a.Bubble(reverse = direction)
@@ -127,6 +238,12 @@ def main():
 	random.shuffle(a)
 	t1 = time.perf_counter()
 	a.Shell(reverse = direction)
+	print(time.perf_counter() - t1)
+#	print(*a)
+
+	random.shuffle(a)
+	t1 = time.perf_counter()
+	a.Heapsort(reverse = direction)
 	print(time.perf_counter() - t1)
 #	print(*a)
 
@@ -142,5 +259,16 @@ def main():
 	print(time.perf_counter() - t1)
 #	print(*a)
 
+	random.shuffle(a)
+	t1 = time.perf_counter()
+	a.Quick(reverse = direction)
+	print(time.perf_counter() - t1)
+#	print(*a)
+
+	random.shuffle(a)
+	t1 = time.perf_counter()
+	a.QuickI(reverse = direction)
+	print(time.perf_counter() - t1)
+#	print(*a)
 	
 main()
