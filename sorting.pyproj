@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>224fe307-d5f3-4622-979d-788889640a9e</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>Heapsort.py</StartupFile>
+    <StartupFile>sorting.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
